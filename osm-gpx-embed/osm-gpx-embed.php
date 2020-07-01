@@ -40,14 +40,48 @@ function osmgpx_header() {
         function _t(t) { return elt.getElementsByTagName(t)[0]; }
         function _c(c) { return elt.getElementsByClassName(c)[0]; }
 
-        var map = L.map(mapid);
-        L.tileLayer(\'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png\', {
-          attribution: \'Map data &copy; <a href="http://www.osm.org">OpenStreetMap</a>\'
-        }).addTo(map);
+        L.CRS.pr = L.extend({}, L.CRS.Simple, {
+          projection: L.Projection.LonLat,
+          transformation: new L.Transformation(726, 39.4, -768, 57.95),
 
-        var control = L.control.layers(null, null).addTo(map);
+          scale: function(zoom) {
+            return Math.pow(2, zoom);
+          },
 
-        new L.GPX(url, {
+          zoom: function(scale) {
+            return Math.log(scale) / Math.LN2;
+          },
+
+          distance: function(latlng1, latlng2) {
+            var dx = latlng2.lng - latlng1.lng,
+              dy = latlng2.lat - latlng1.lat;
+
+            return Math.sqrt(dx * dx + dy * dy);
+          },
+
+          infinite: true
+        });
+
+        var map = L.map(mapid, {
+          crs: L.CRS.pr,
+        }).setView([0, 0], 3);
+        
+        var mapheight = 11008;
+        var mapwidth = 11008;
+        var sw = map.unproject([0, mapheight], 7);
+        var ne = map.unproject([mapwidth, 0], 7);
+        var layerbounds = new L.LatLngBounds(sw, ne);
+        map.setMaxBounds(layerbounds);
+        var mapimage = L.tileLayer(\'https://cdn.mapgenie.io/images/tiles/gta5/los-santos/satellite/{z}/{x}/{y}.png\', {
+          attribution: \'Map data &copy; <a href="https://mapgenie.io">Map Genie</a>\',
+          minZoom: 3,
+          maxZoom: 7,
+          bounds: layerbounds,
+          noWrap: true
+        })
+        mapimage.addTo(map);
+
+        var tmp = new L.GPX(url, {
           async: true,
           marker_options: {
             startIconUrl: \'' . $gpximg . 'pin-icon-start.png\',
@@ -55,9 +89,15 @@ function osmgpx_header() {
             shadowUrl:    \'' . $gpximg . 'pin-shadow.png\',
           },
         }).on(\'loaded\', function(e) {
+          if (tmp.get_color() != null) {
+              tmp.setStyle({
+                  color: tmp.get_color(),
+                  opacity: 0.8
+              });
+          }
           var gpx = e.target;
           map.fitBounds(gpx.getBounds());
-          control.addOverlay(gpx, gpx.get_name());';
+';
     if (get_option('osmgpx_header') != null && get_option('osmgpx_header') == 1) {
         echo '_t(\'h3\').textContent = gpx.get_name();
           _c(\'start\').textContent = gpx.get_start_time().toLocaleDateString({dateStyle: \'long\'}) + \', \' + gpx.get_start_time().toLocaleTimeString();';
