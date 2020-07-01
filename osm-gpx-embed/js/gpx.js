@@ -93,7 +93,6 @@ L.GPX = L.FeatureGroup.extend({
       this._parse(gpx, options, this.options.async);
     }
   },
-
   get_duration_string: function(duration, hidems) {
     var s = '';
 
@@ -134,7 +133,9 @@ L.GPX = L.FeatureGroup.extend({
   m_to_km:             function(v) { return v / 1000; },
   m_to_mi:             function(v) { return v / 1609.34; },
 
+  get_gpx:            function() { return this._gpx; },
   get_name:            function() { return this._info.name; },
+  get_color:            function() { return this._info.color; },
   get_desc:            function() { return this._info.desc; },
   get_author:          function() { return this._info.author; },
   get_copyright:       function() { return this._info.copyright; },
@@ -159,6 +160,7 @@ L.GPX = L.FeatureGroup.extend({
   get_elevation_loss:     function() { return this._info.elevation.loss; },
   get_elevation_gain_imp: function() { return this.to_ft(this.get_elevation_gain()); },
   get_elevation_loss_imp: function() { return this.to_ft(this.get_elevation_loss()); },
+  get_elevation_profile: function() { return this._eleprofile.data; },
   get_elevation_data:     function() {
     var _this = this;
     return this._info.elevation._points.map(
@@ -254,6 +256,7 @@ L.GPX = L.FeatureGroup.extend({
       atemp: {avg: 0, _total: 0, _points: []},
       cad: {avg: 0, _total: 0, _nonZeroCad: 0, _points: []}
     };
+    this._eleprofile = { data: [] };
   },
 
   _load_xml: function(url, cb, options, async) {
@@ -303,6 +306,11 @@ L.GPX = L.FeatureGroup.extend({
     var name = xml.getElementsByTagName('name');
     if (name.length > 0) {
       this._info.name = name[0].textContent;
+    }
+    var color = xml.getElementsByTagName('extensions');
+    if (color.length > 0) {
+        this._info.color = color[0].textContent.trim();
+        //console.log(this._info.color);
     }
     var desc = xml.getElementsByTagName('desc');
     if (desc.length > 0) {
@@ -494,7 +502,9 @@ L.GPX = L.FeatureGroup.extend({
 
       if (last != null) {
         this._info.length += this._dist3d(last, ll);
-
+        
+        this._eleprofile.data.push({x: (this._info.length/1000).toFixed(1), y: ll.meta.ele.toFixed(1)});
+        
         var t = ll.meta.ele - last.meta.ele;
         if (t > 0) {
           this._info.elevation.gain += t;
